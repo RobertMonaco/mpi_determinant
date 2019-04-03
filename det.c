@@ -193,31 +193,43 @@ int main(int argc, char** argv)
   MPI_Comm_size(comm, &comm_sz);
   MPI_Comm_rank(comm, &my_rank);
 
-  int N = argv[1];
-  char f_name[50];
-  double a[N][N];
-  int i,j;
+  //Needed for function call
+  int N;
+  double ** a;
   double log_det;
-  printf("1a\n");
-  //Create filename
-  sprintf(f_name,"m0016x0016.bin");
-  printf("Reading array file %s of size %dx%d\n",f_name,N,N);
-  
-  //Open matrix binary file
-  FILE *datafile=fopen(f_name,"rb");
-  //Read elements into matrix a from binary
-  for (i=0; i< N; i++)
-    for (j=0; j< N; j++)
-    {
-        fread(&a[i][j],sizeof(double),1,datafile);
-        printf("a[%d][%d]=%f\n",i,j,a[i][j]);
-    }
-  printf("2a\n");
-  printf("Matrix has been read.\n");
 
+  if(my_rank == 0){
+    N = atoi(argv[1]);
+    a = alloc_contiguous(N, N);
+    char f_name[50];
+    int i,j;
+
+    //Create filename
+    sprintf(f_name,"m0016x0016.bin");
+    printf("Reading array file %s of size %dx%d\n",f_name,N,N);
+    
+    //Open matrix binary file
+    FILE *datafile = fopen(f_name,"rb");
+    //Read elements into matrix a from binary
+    for (i = 0; i < N; i++)
+      for (j = 0; j < N; j++)
+      {
+          fread(&(a[i][j]),sizeof(double),1,datafile);
+          printf("a[%d][%d]=%f\n",i,j,a[i][j]);
+      }
+    printf("Matrix has been read.\n");
+  }
+  printf("Starting Bcast\n");
+  MPI_Bcast(&N, 1, MPI_INT, 0, comm);
+  printf("Bcast 1 done\n");
+  MPI_Bcast(&a, N*N, MPI_DOUBLE, 0, comm);
+  printf("Bcast 2 done\n");
   log_det = logdet(N, comm_sz, a, my_rank, comm);
-  gauss_elim(a, N);
-  log_det += serial_logdet(a, N);
+  
+  if(my_rank == 0){
+    gauss_elim(a, N);
+    log_det += serial_logdet(a, N);
+  }
 
   MPI_Finalize();
   return 0;
