@@ -215,6 +215,7 @@ int main(int argc, char** argv)
 
   logdet = logdet(N, comm_sz, get_ptr(a), my_rank, comm);
   gauss_elim(a, N);
+  logdet += serial_logdet(a, N);
 
   MPI_Finalize();
   return 0;
