@@ -72,7 +72,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
     local_Nrow*N,
     MPI_DOUBLE,
     0,
-    comm)
+    comm);
 
   // Start the algorithm
   for(int row = 0; row < local_Nrow - 1; row++){
