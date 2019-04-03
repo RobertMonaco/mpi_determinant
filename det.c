@@ -75,6 +75,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
     0,
     comm);
 
+  printf("1\n");
   // Start the algorithm
   for(int row = 0; row < local_Nrow - 1; row++){
     for(int p = 0; p < n; p++){
@@ -130,7 +131,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
       }
     }
   }
-
+  printf("2\n");
   // Gather the local A matrices into proc 0
   MPI_Gather(get_ptr(local_A),
     local_Nrow*N,
@@ -140,7 +141,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
     MPI_DOUBLE,
     0,
     comm);
-    
+  printf("3\n");
   MPI_Reduce(&local_logdet,
     &logdet,
     1,
@@ -148,7 +149,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
     MPI_SUM,
     0,
     comm);
-
+  printf("4\n");
   return logdet;
 }
 
@@ -204,7 +205,6 @@ int main(int argc, char** argv)
   
   //Open matrix binary file
   FILE *datafile=fopen(f_name,"rb");
-  
   //Read elements into matrix a from binary
   for (i=0; i< N; i++)
     for (j=0; j< N; j++)
