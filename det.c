@@ -51,7 +51,7 @@ void swap_double(double* a, double* b)
  *  my_rank: current process number
  *  comm: the MPI communicator
  */
-double logdet(int N, int n, double[][] a, int my_rank, MPI_Comm comm){
+double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
   double local_logdet = 0.0;
   double logdet = 0.0;
   int local_Nrow = N / n;
@@ -159,7 +159,7 @@ void gauss_elim(double ** a, int N){
           if(i > j)
           {
               double c = a[i][j] / a[j][j];
-              for(int k = 0; k < n+1; k++)
+              for(int k = 0; k < N+1; k++)
               {
                 a[i][k]= a[i][k] - c * a[j][k];
               }
@@ -213,7 +213,7 @@ int main(int argc, char** argv)
     }
   printf("Matrix has been read.\n");
 
-  logdet = logdet(N, comm_sz, get_ptr(a), my_rank, comm);
+  logdet = logdet(N, comm_sz, a, my_rank, comm);
   gauss_elim(a, N);
   logdet += serial_logdet(a, N);
 
