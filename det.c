@@ -75,7 +75,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
     0,
     comm);
 
-  printf("1\n");
+  printf("%d: 1\n", my_rank);
   // Start the algorithm
   for(int row = 0; row < local_Nrow - 1; row++){
     for(int p = 0; p < n; p++){
@@ -99,7 +99,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
         }
         
         // Swap pivot row
-        swap_double(&pivot_row[j], &pivot_row[local_Ncol - 1]);
+        swap_double(&(pivot_row[j]), &(pivot_row[local_Ncol - 1]));
         if(pivot_val == 0){
           local_logdet += log2(abs(pivot_val));
         }
@@ -108,6 +108,8 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
       } else {
         row_shift = 0;
       }
+
+      printf("%d: 1.5\n", my_rank);
 
       // Broadcast pivot_row and j from proc p to all other procs
       MPI_Bcast(&pivot_row, N, MPI_DOUBLE, p, comm);
@@ -131,7 +133,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
       }
     }
   }
-  printf("2\n");
+  printf("%d: 2\n", my_rank);
   // Gather the local A matrices into proc 0
   MPI_Gather(get_ptr(local_A),
     local_Nrow*N,
@@ -219,11 +221,11 @@ int main(int argc, char** argv)
       }
     printf("Matrix has been read.\n");
   }
-  printf("Starting Bcast\n");
+  printf("%d: Starting Bcast\n", my_rank);
   MPI_Bcast(&N, 1, MPI_INT, 0, comm);
-  printf("Bcast 1 done\n");
+  printf("%d: Bcast 1 done\n", my_rank);
   MPI_Bcast(&a, N*N, MPI_DOUBLE, 0, comm);
-  printf("Bcast 2 done\n");
+  printf("%d: Bcast 2 done\n", my_rank);
   log_det = logdet(N, comm_sz, a, my_rank, comm);
   
   if(my_rank == 0){
