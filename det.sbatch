@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-#SBATCH --partition=normal
+#SBATCH --partition=debug
 #sbatch --nodes=1 
-#SBATCH --ntasks=16
+#SBATCH --ntasks=4
 #SBATCH --mem=1024
 #SBATCH --output=det_%J_stdout.txt
 #SBATCH --error=det_%J_stderr.txt
@@ -12,4 +12,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --chdir=/home/oucs016/SIPE/mpi_determinant/
 ##################################################
-mpirun -n 16 det 16 > det_output16.txt
+mpirun -n 4 det 16 > det_output16.txt
