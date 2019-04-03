@@ -109,22 +109,28 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
         row_shift = 0;
       }
 
-      printf("%d: 1.5\n", my_rank);
+      printf("%d: 2\n", my_rank);
 
       // Broadcast pivot_row and j from proc p to all other procs
       MPI_Bcast(&pivot_row, N, MPI_DOUBLE, p, comm);
       MPI_Bcast(&j, 1, MPI_INT, p, comm);
       
+      printf("%d: 3\n", my_rank);
+
       pivot_col = (double*)malloc(sizeof(double)*local_Nrow);
       for(int i = row+row_shift; i < local_Nrow; i++){
         pivot_col[i] = local_A[i][j];
       }
 
+      printf("%d: 4\n", my_rank);
+
       for( int i = row+row_shift; i < local_Nrow; i++){
-        swap_double(&local_A[i][j], &local_A[i][local_Ncol - 1]);
+        swap_double(&(local_A[i][j]), &(local_A[i][local_Ncol - 1]));
       }
 
       local_Ncol--;
+
+      printf("%d: 5\n", my_rank);
       
       for (int i = row+row_shift; i < local_Nrow; i++){
         for (int k = 0; k < local_Ncol; k++){
@@ -133,7 +139,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
       }
     }
   }
-  printf("%d: 2\n", my_rank);
+  printf("%d: 6\n", my_rank);
   // Gather the local A matrices into proc 0
   MPI_Gather(get_ptr(local_A),
     local_Nrow*N,
