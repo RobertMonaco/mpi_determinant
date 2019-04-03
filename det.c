@@ -98,7 +98,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
         }
         
         // Swap pivot row
-        swap_double(pivot_row[j], pivot_row[local_Ncol - 1]);
+        swap_double(&pivot_row[j], &pivot_row[local_Ncol - 1]);
         if(pivot_val == 0){
           local_logdet += log2(abs(pivot_val));
         }
@@ -118,7 +118,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
       }
 
       for( int i = row+row_shift; i < local_Nrow; i++){
-        swap_double(local_A[i][j], local_A[i][local_Ncol - 1]);
+        swap_double(&local_A[i][j], &local_A[i][local_Ncol - 1]);
       }
 
       local_Ncol--;
