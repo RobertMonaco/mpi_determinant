@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 #SBATCH --partition=normal
 #sbatch --nodes=1 
 #SBATCH --ntasks=16
