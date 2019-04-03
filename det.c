@@ -61,6 +61,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
   double * pivot_row;
   double * pivot_col;
   int row_shift;
+  int j;
 
   double** local_A = alloc_contiguous(local_Nrow, N);
 
@@ -85,8 +86,8 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
 
         //get max absolute value of pivot row
         for(int col=0; col < N; col++){
-          if(math.abs(pivot_row[col]) > pivot_val){
-            pivot_val = math.abs(pivot_row[col]);
+          if(abs(pivot_row[col]) > pivot_val){
+            pivot_val = abs(pivot_row[col]);
             pivot = col;
           }
         }
@@ -124,7 +125,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
       
       for (int i = row+row_shift; i < local_Nrow; i++){
         for (int k = 0; k < local_Ncol; k++){
-          local_A[i][k] = local_A[row][col] - (pivot_col[i]*pivot_col[k]);
+          local_A[i][k] -= (pivot_col[i]*pivot_col[k]);
         }
       }
     }
