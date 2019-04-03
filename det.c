@@ -198,7 +198,7 @@ int main(int argc, char** argv)
   double a[N][N];
   int i,j;
   double log_det;
-
+  printf("1a\n");
   //Create filename
   sprintf(f_name,"m0016x0016.bin");
   printf("Reading array file %s of size %dx%d\n",f_name,N,N);
@@ -212,6 +212,7 @@ int main(int argc, char** argv)
         fread(&a[i][j],sizeof(double),1,datafile);
         printf("a[%d][%d]=%f\n",i,j,a[i][j]);
     }
+  printf("2a\n");
   printf("Matrix has been read.\n");
 
   log_det = logdet(N, comm_sz, a, my_rank, comm);
