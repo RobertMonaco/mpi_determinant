@@ -10,6 +10,6 @@
 #SBATCH --job-name=det
 #SBATCH --mail-user=robertmonaco@ou.edu
 #SBATCH --mail-type=ALL
-#SBATCH --chdir=/home/oucs016/SIPE/det_output
+#SBATCH --chdir=/home/oucs016/SIPE/mpi_determinant/
 ##################################################
-mpirun -n 16 mpi_determinant/det 16 > det_output16.txt
+mpirun -n 16 det 16 > det_output16.txt
