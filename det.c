@@ -196,7 +196,7 @@ int main(int argc, char** argv)
   char f_name[50];
   double a[N][N];
   int i,j;
-  double logdet;
+  double log_det;
 
   //Create filename
   sprintf(f_name,"m0016x0016.bin");
@@ -214,9 +214,9 @@ int main(int argc, char** argv)
     }
   printf("Matrix has been read.\n");
 
-  logdet = logdet(N, comm_sz, a, my_rank, comm);
+  log_det = logdet(N, comm_sz, a, my_rank, comm);
   gauss_elim(a, N);
-  logdet += serial_logdet(a, N);
+  log_det += serial_logdet(a, N);
 
   MPI_Finalize();
   return 0;
