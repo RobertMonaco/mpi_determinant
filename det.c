@@ -65,6 +65,7 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
 
   double** local_A = alloc_contiguous(local_Nrow, N);
 
+  printf("%d: 0\n", my_rank);
   // Scatter A to all other processes
   MPI_Scatter(get_ptr(a), 
     local_Nrow*N, 
@@ -206,6 +207,9 @@ int main(int argc, char** argv)
   double ** a;
   double log_det;
 
+  printf("%d\n",my_rank);
+  printf("%d\n", comm_sz);
+
   if(my_rank == 0){
     N = atoi(argv[1]);
     a = alloc_contiguous(N, N);
@@ -227,11 +231,14 @@ int main(int argc, char** argv)
       }
     printf("Matrix has been read.\n");
   }
-  printf("%d: Starting Bcast\n", my_rank);
+  MPI_Comm_rank(comm, &my_rank);
+  printf("%d\n",my_rank);
+
   MPI_Bcast(&N, 1, MPI_INT, 0, comm);
-  printf("%d: Bcast 1 done\n", my_rank);
   MPI_Bcast(&a, N*N, MPI_DOUBLE, 0, comm);
-  printf("%d: Bcast 2 done\n", my_rank);
+
+  // printf("%d\n",my_rank);
+  // printf("%d\n", comm_sz);
   log_det = logdet(N, comm_sz, a, my_rank, comm);
   
   if(my_rank == 0){
