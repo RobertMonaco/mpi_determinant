@@ -51,29 +51,15 @@ void swap_double(double* a, double* b)
  *  my_rank: current process number
  *  comm: the MPI communicator
  */
-double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
+double logdet(int local_Nrow, int local_Ncol, double** local_A, int my_rank, int n, MPI_Comm comm){
   double local_logdet = 0.0;
   double logdet = 0.0;
-  int local_Nrow = N / n;
-  int local_Ncol = N;
-  int pivot;
   double pivot_val = 0.0; 
+  int pivot;
   double * pivot_row;
   double * pivot_col;
   int row_shift;
   int j;
-
-  double** local_A = alloc_contiguous(local_Nrow, N);
-
-  // Scatter A to all other processes
-  MPI_Scatter(get_ptr(a), 
-    local_Nrow*N, 
-    MPI_DOUBLE, 
-    get_ptr(local_A),
-    local_Nrow*N,
-    MPI_DOUBLE,
-    0,
-    comm);
 
   printf("%d: 1\n", my_rank);
   // Start the algorithm
@@ -83,18 +69,18 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
       if(my_rank == p){
         pivot_row = local_A[row];
         pivot_val = -1;
-        pivot = -1;
+        j = -1;
 
         //get max absolute value of pivot row
-        for(int col=0; col < N; col++){
+        for(int col=0; col < local_Ncol; col++){
           if(abs(pivot_row[col]) > pivot_val){
             pivot_val = abs(pivot_row[col]);
-            pivot = col;
+            j = col;
           }
         }
 
         // divide pivot row by pivot value
-        for (int col=0; col<N; col++){
+        for (int col=0; col<local_Ncol; col++){
           pivot_row[col] = pivot_row[col]/pivot_val;
         }
         
@@ -140,15 +126,6 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
     }
   }
   printf("%d: 6\n", my_rank);
-  // Gather the local A matrices into proc 0
-  MPI_Gather(get_ptr(local_A),
-    local_Nrow*N,
-    MPI_DOUBLE,
-    get_ptr(a),
-    local_Nrow*N,
-    MPI_DOUBLE,
-    0,
-    comm);
   printf("3\n");
   MPI_Reduce(&local_logdet,
     &logdet,
@@ -206,9 +183,10 @@ int main(int argc, char** argv)
   double ** a;
   double log_det;
 
+  printf("%d\n",my_rank);
   if(my_rank == 0){
     N = atoi(argv[1]);
-    a = alloc_contiguous(N, N);
+    a = malloc(N*N*sizeof(double));
     char f_name[50];
     int i,j;
 
@@ -227,12 +205,39 @@ int main(int argc, char** argv)
       }
     printf("Matrix has been read.\n");
   }
-  printf("%d: Starting Bcast\n", my_rank);
+
+  //broadcast value of N from process 0
   MPI_Bcast(&N, 1, MPI_INT, 0, comm);
-  printf("%d: Bcast 1 done\n", my_rank);
-  MPI_Bcast(&a, N*N, MPI_DOUBLE, 0, comm);
-  printf("%d: Bcast 2 done\n", my_rank);
-  log_det = logdet(N, comm_sz, a, my_rank, comm);
+  
+  //allocate local Nrow for each process
+  int local_Nrow = N / comm_sz;
+  //allocate room for local matrix
+  double** local_A = malloc(local_Nrow*N*sizeof(double));
+
+  // Scatter A to all other processes
+  MPI_Scatter(get_ptr(a), 
+    local_Nrow*N, 
+    MPI_DOUBLE, 
+    get_ptr(local_A),
+    local_Nrow*N,
+    MPI_DOUBLE,
+    0,
+    comm);
+
+  printf("%d: Scatter finished\n",my_rank);
+
+  //get log det for each local matrix
+  log_det = logdet(local_Nrow, N, local_A, my_rank, comm_sz, comm);
+  
+  // Gather the local A matrices into proc 0
+  MPI_Gather(get_ptr(local_A),
+    local_Nrow*N,
+    MPI_DOUBLE,
+    get_ptr(a),
+    local_Nrow*N,
+    MPI_DOUBLE,
+    0,
+    comm);
   
   if(my_rank == 0){
     gauss_elim(a, N);
