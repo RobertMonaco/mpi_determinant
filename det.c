@@ -113,19 +113,19 @@ double logdet(int N, int n, double** a, int my_rank, MPI_Comm comm){
 
       // Broadcast pivot_row and j from proc p to all other procs
       MPI_Bcast(&pivot_row, N, MPI_DOUBLE, p, comm);
-      MPI_Bcast(&j, 1, MPI_INT, p, comm);
+      MPI_Bcast(&pivot, 1, MPI_INT, p, comm);
       
       printf("%d: 3\n", my_rank);
 
       pivot_col = (double*)malloc(sizeof(double)*local_Nrow);
       for(int i = row+row_shift; i < local_Nrow; i++){
-        pivot_col[i] = local_A[i][j];
+        pivot_col[i] = local_A[i][pivot];
       }
 
       printf("%d: 4\n", my_rank);
 
       for( int i = row+row_shift; i < local_Nrow; i++){
-        swap_double(&(local_A[i][j]), &(local_A[i][local_Ncol - 1]));
+        swap_double(&(local_A[i][pivot]), &(local_A[i][local_Ncol - 1]));
       }
 
       local_Ncol--;
