@@ -40,8 +40,20 @@ void free_contiguous(double** matrix)
 void swap_double(double* a, double* b)
 {
   double temp = *a;
-  *b = temp;
   *a = *b;
+  *b = temp;
+}
+
+void print_matrix(double** matrix, int rows, int cols)
+{
+  for (int i = 0; i < rows; i++)
+  {
+    for (int j = 0; j < cols; j++)
+    {
+      printf("%f, ", matrix[i][j]);
+    }
+    printf("\n");
+  }
 }
 
 /** Calculate the log determinant of a square matrix 
@@ -53,29 +65,31 @@ void swap_double(double* a, double* b)
  */
 double logdet(int local_Nrow, int local_Ncol, double** local_A, int my_rank, int n, MPI_Comm comm){
   double local_logdet = 0.0;
-  double logdet = 0.0;
   double pivot_val = 0.0; 
   int pivot;
   double * pivot_row;
   double * pivot_col;
   int row_shift;
-  int j;
+  
+  pivot_row = (double*)malloc(sizeof(double)*local_Ncol);
 
-  printf("%d: 1\n", my_rank);
   // Start the algorithm
   for(int row = 0; row < local_Nrow - 1; row++){
     for(int p = 0; p < n; p++){
       
       if(my_rank == p){
-        pivot_row = local_A[row];
+
+        for (int col = 0; col < local_Ncol; col++)
+          pivot_row[col] = local_A[row][col];
+
         pivot_val = -1;
-        j = -1;
+        pivot = -1;
 
         //get max absolute value of pivot row
         for(int col=0; col < local_Ncol; col++){
-          if(abs(pivot_row[col]) > pivot_val){
-            pivot_val = abs(pivot_row[col]);
-            j = col;
+          if(fabs(pivot_row[col]) >= pivot_val){
+            pivot_val = fabs(pivot_row[col]);
+            pivot = col;
           }
         }
 
@@ -85,9 +99,10 @@ double logdet(int local_Nrow, int local_Ncol, double** local_A, int my_rank, int
         }
         
         // Swap pivot row
-        swap_double(&(pivot_row[j]), &(pivot_row[local_Ncol - 1]));
-        if(pivot_val == 0){
-          local_logdet += log2(abs(pivot_val));
+        pivot_row[pivot] = pivot_row[local_Ncol - 1];
+
+        if(pivot_val != 0){
+          local_logdet += log10(pivot_val);
         }
         row_shift = 1;
 
@@ -95,63 +110,49 @@ double logdet(int local_Nrow, int local_Ncol, double** local_A, int my_rank, int
         row_shift = 0;
       }
 
-      printf("%d: 2\n", my_rank);
-
       // Broadcast pivot_row and j from proc p to all other procs
-      MPI_Bcast(&pivot_row, N, MPI_DOUBLE, p, comm);
+      MPI_Bcast(pivot_row, local_Ncol, MPI_DOUBLE, p, comm);
       MPI_Bcast(&pivot, 1, MPI_INT, p, comm);
       
-      printf("%d: 3\n", my_rank);
-
       pivot_col = (double*)malloc(sizeof(double)*local_Nrow);
+
+      // Make the pivot column
       for(int i = row+row_shift; i < local_Nrow; i++){
         pivot_col[i] = local_A[i][pivot];
       }
 
-      printf("%d: 4\n", my_rank);
-
-      for( int i = row+row_shift; i < local_Nrow; i++){
-        swap_double(&(local_A[i][pivot]), &(local_A[i][local_Ncol - 1]));
+      // 
+      for( int i = row+row_shift; i < local_Nrow ; i++){
+        local_A[i][pivot] = local_A[i][local_Ncol - 1];
       }
 
       local_Ncol--;
 
-      printf("%d: 5\n", my_rank);
-      
-      for (int i = row+row_shift; i < local_Nrow; i++){
+      for (int i = row+row_shift; i < local_Nrow ; i++){
         for (int k = 0; k < local_Ncol; k++){
-          local_A[i][k] -= (pivot_col[i]*pivot_col[k]);
+          local_A[i][k] -= pivot_col[i]*pivot_row[k];
         }
       }
     }
   }
-  printf("%d: 6\n", my_rank);
-  printf("3\n");
-  MPI_Reduce(&local_logdet,
-    &logdet,
-    1,
-    MPI_DOUBLE,
-    MPI_SUM,
-    0,
-    comm);
-  printf("4\n");
-  return logdet;
+
+ return local_logdet;
 }
 
 void gauss_elim(double ** a, int N){
   for(int j = 0; j < N; j++) /* loop for the generation of upper triangular matrix*/
   {
-      for(int i = 0; i < N; i++)
-      {
-          if(i > j)
-          {
-              double c = a[i][j] / a[j][j];
-              for(int k = 0; k < N+1; k++)
-              {
-                a[i][k]= a[i][k] - c * a[j][k];
-              }
-          }
-      }
+    for(int i = 0; i < N; i++)
+    {
+        if(i > j)
+        {
+            double c = a[i][j] / a[j][j];
+            for(int k = 0; k < N+1; k++)
+            {
+              a[i][k]= a[i][k] - c * a[j][k];
+            }
+        }
+    }
   }
 }
 
@@ -159,8 +160,9 @@ double serial_logdet(double ** a, int N){
   double logdet = 0.0;
 
   for(int i = 0; i < N; i++){
-    if(a[i][i] == 0){
-      logdet += log2(abs(a[i][i]));
+
+    if(a[i][i] != 0){
+      logdet += log10(fabs(a[i][i]));
     }
   }
 
@@ -180,39 +182,49 @@ int main(int argc, char** argv)
 
   //Needed for function call
   int N;
-  double ** a;
+  double ** a, ** a_serial;
   double log_det;
+  double local_logdet = 0.0;
 
-  printf("%d\n",my_rank);
   if(my_rank == 0){
     N = atoi(argv[1]);
-    a = malloc(N*N*sizeof(double));
     char f_name[50];
     int i,j;
 
+    a = alloc_contiguous(N,N);
+    a_serial = alloc_contiguous(N,N);
+
     //Create filename
+    
     sprintf(f_name,"m0016x0016.bin");
-    printf("Reading array file %s of size %dx%d\n",f_name,N,N);
     
     //Open matrix binary file
     FILE *datafile = fopen(f_name,"rb");
+    
     //Read elements into matrix a from binary
     for (i = 0; i < N; i++)
+    {
       for (j = 0; j < N; j++)
       {
           fread(&(a[i][j]),sizeof(double),1,datafile);
-          printf("a[%d][%d]=%f\n",i,j,a[i][j]);
+          a_serial[i][j] = a[i][j];
       }
-    printf("Matrix has been read.\n");
+    }
+
+    print_matrix(a, N, N);
   }
 
   //broadcast value of N from process 0
   MPI_Bcast(&N, 1, MPI_INT, 0, comm);
+
+  // Allocate a for every other process
+  if (my_rank != 0)
+    a = alloc_contiguous(N,N);
   
   //allocate local Nrow for each process
   int local_Nrow = N / comm_sz;
   //allocate room for local matrix
-  double** local_A = malloc(local_Nrow*N*sizeof(double));
+  double** local_A = alloc_contiguous(local_Nrow, N);
 
   // Scatter A to all other processes
   MPI_Scatter(get_ptr(a), 
@@ -224,24 +236,42 @@ int main(int argc, char** argv)
     0,
     comm);
 
-  printf("%d: Scatter finished\n",my_rank);
-
   //get log det for each local matrix
-  log_det = logdet(local_Nrow, N, local_A, my_rank, comm_sz, comm);
+  local_logdet = logdet(local_Nrow, N, local_A, my_rank, comm_sz, comm);
   
-  // Gather the local A matrices into proc 0
-  MPI_Gather(get_ptr(local_A),
-    local_Nrow*N,
+  MPI_Reduce(&local_logdet,
+    &log_det,
+    1,
     MPI_DOUBLE,
-    get_ptr(a),
-    local_Nrow*N,
+    MPI_SUM,
+    0,
+    comm);
+  double ** global_a = alloc_contiguous(comm_sz, comm_sz);
+
+  // Gather the local A matrices into proc 0
+  MPI_Gather(&(local_A[local_Nrow-1][0]),
+    comm_sz,
+    MPI_DOUBLE,
+    get_ptr(global_a),
+    comm_sz,
     MPI_DOUBLE,
     0,
     comm);
   
   if(my_rank == 0){
-    gauss_elim(a, N);
-    log_det += serial_logdet(a, N);
+
+    gauss_elim(global_a, comm_sz);
+    printf("global_a after elimination: \n");
+    print_matrix(global_a, comm_sz, comm_sz);
+    double serial2 = serial_logdet(global_a, comm_sz);
+
+    gauss_elim(a_serial, N);
+    double serial = serial_logdet(a_serial, N);
+
+    printf("Serial result: %f\n", serial);
+    printf("Parallel result: %f\n", log_det);
+    printf("Serial result of post-algorithm matrix: %f\n", serial2);
+    printf("Parallel result plus serial: %f\n", log_det + serial2);
   }
 
   MPI_Finalize();
